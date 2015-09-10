@@ -1,3 +1,4 @@
+from collections import Counter
 from datetime import datetime
 import enumerations
 import pytz
@@ -46,7 +47,6 @@ def generate_patterns():
         # ignore inherited methods that come with most python modules
         # also ignore short variables of 1 length
         if not key.startswith("__") and len(key) > 1:
-            print 'key is', key
             pattern = "(?P<" + key + ">" + "|".join(getattr(enumerations, key)) + ")"
 
             # check to see if pattern is in unicode
@@ -57,14 +57,16 @@ def generate_patterns():
             patterns[key] = pattern
 
     #merge months as regular name, abbreviation and number all together
-    patterns['day'] = u'(?P<day_of_the_month>' + patterns['days_of_the_month_as_numbers'] + u'|' + patterns['days_of_the_month_as_ordinal'] + ')'
+    patterns['day'] = u'(?P<day_of_the_month>' + patterns['days_of_the_month_as_numbers'] + u'|' + patterns['days_of_the_month_as_ordinal'] + ')(?!\d{2,4})'
 
     #merge months as regular name, abbreviation and number all together
-    patterns['month'] = u'(?P<month>' + patterns['months_verbose'] + u'|' + patterns['months_abbreviated'] + u'|' + patterns['months_as_numbers'] + u')'
+    # makes sure that it doesn't pull out 3 as the month in January 23, 2015
+    patterns['month'] = u'(?<!\d)(?P<month>' + patterns['months_verbose'] + u'|' + patterns['months_abbreviated'] + u'|' + patterns['months_as_numbers'] + u')'
 
     # matches the year as two digits or four
     # tried to match the four digits first
-    patterns['year'] = u'(?P<year>\d{4}|\d{2})'
+    # (?!, \d{2,4}) makes sure it doesn't pick out 23 as the year in January 23, 2015
+    patterns['year'] = u'(?P<year>\d{4}|\d{2})(?!, \d{2,4})'
 
     # spaces or punctuation separatings days, months and years
     # blank space, comma, dash, period, backslash
@@ -115,7 +117,11 @@ def extract_dates(text):
         dates.append(get_date_from_match_group(match))
 
     # add year month day to matches
+    # to make sure don't match 23 May 2015 as May 2, 2023
     for match in re.finditer(re.compile(u"(?P<date>" + patterns['year'] + patterns['punctuation'] + patterns['month'] + patterns['punctuation'] + patterns['day'] + u")", re.MULTILINE|re.IGNORECASE), text):
         dates.append(get_date_from_match_group(match))
+
+    # sorts the dates by the number of times they appear in the text
+    dates = [date for date, freq in Counter(dates).most_common()]
 
     return dates
