@@ -85,7 +85,13 @@ def get_date_from_match_group(match):
     else:
         month = month_to_number[month]
 
-    return datetime(int(match.group("year")), month, int(match.group("day_of_the_month")), tzinfo=tzinfo)
+    try:
+        day = int(match.group("day_of_the_month"))
+    except Exception as e:
+        print "exception is", e
+        day = 1
+
+    return datetime(int(match.group("year")), month, day, tzinfo=tzinfo)
  
 def extract_dates(text):
     global patterns
@@ -101,7 +107,7 @@ def extract_dates(text):
     matches = []
     
     # add day month year to matches
-    for match in re.finditer(re.compile(u"(?P<date>" + patterns['day'] + patterns['punctuation'] + patterns['month'] + patterns['punctuation'] + patterns['year'] + u")", re.MULTILINE|re.IGNORECASE), text):
+    for match in re.finditer(re.compile(u"(?P<date>" + "(" + patterns['day'] + patterns['punctuation'] + ")?" + patterns['month'] + patterns['punctuation'] + patterns['year'] + u")", re.MULTILINE|re.IGNORECASE), text):
         dates.append(get_date_from_match_group(match))
 
     # add month day year to matches
