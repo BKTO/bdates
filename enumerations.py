@@ -1,3 +1,4 @@
+print "loaded enumerations"
 days_of_the_week_verbose = ["Sunday","Monday","Tuesday","Wednesday","Wenesday","Wendsday","Thursday","Friday","Saturday"]
 
 days_of_the_week_abbreviated = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
