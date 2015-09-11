@@ -8,7 +8,7 @@ setup(
   author = 'Better Know The Opposition (BKTO)',
   author_email = 'hello@betterknowtheopposition.com',
   url = 'https://github.com/BKTO/bdates',
-  download_url = 'https://github.com/BKTO/bdates',
+  download_url = 'https://github.com/BKTO/bdates/tarball/0.5',
   keywords = ['date','nlp','scraping'],
   classifiers = [],
 )
