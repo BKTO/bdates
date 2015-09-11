@@ -77,10 +77,10 @@ global patterns
 generate_patterns()
 
 def get_date_from_match_group(match):
-    print "starting get_date_from_match_group with ", match
-    print dir(match)
-    print match.group(0)
-    print match.groupdict()
+    #print "starting get_date_from_match_group with ", match
+    #print dir(match)
+    #print match.group(0)
+    #print match.groupdict()
     month = match.group("month")
     if month.isdigit():
         month = int(month)
@@ -90,7 +90,7 @@ def get_date_from_match_group(match):
     try:
         day = int(match.group("day_of_the_month"))
     except Exception as e:
-        print "exception is", e
+        #print "exception is", e
         day = 1
 
     return datetime(int(match.group("year")), month, day, tzinfo=tzinfo)
