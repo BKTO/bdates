@@ -1,5 +1,5 @@
 from collections import Counter
-from datetime import datetime
+from datetime import date, datetime
 import enumerations
 import pytz
 import re
@@ -37,6 +37,34 @@ month_to_number = {
                  "December": 12
 }
 
+#num converts text to a number
+def num(text):
+    if text:
+        if text.isdigit():
+            return int(text)
+        else:
+            text_title = text.title()
+            if text_title in month_to_number:
+                return month_to_number[text_title] 
+            else:
+                return None
+
+# normalizes year to four digits
+# e.g., 90s to 1990 and 11 to 2011
+def normalize_year(y):
+    current_year = date.today().year
+    y_str = str(y).rstrip('s').rstrip("'")
+    if len(y_str) == 2:
+        y_int = int(y_str)
+        if y_int > int(str(current_year+1)[2:]):
+            y_int = int(str(current_year-100)[0:2] + y_str)
+        else:
+            y_int = int(str(current_year)[0:2] + y_str)
+        return y_int
+    else:
+        return int(y)
+    
+
 def generate_patterns():
     global patterns
     patterns = {}
@@ -47,7 +75,7 @@ def generate_patterns():
         # ignore inherited methods that come with most python modules
         # also ignore short variables of 1 length
         if not key.startswith("__") and len(key) > 1:
-            pattern = "(?P<" + key + ">" + "|".join(getattr(enumerations, key)) + ")"
+            pattern = "(?:" + "|".join(getattr(enumerations, key)) + ")"
 
             # check to see if pattern is in unicode
             # if it's not convert it
@@ -57,7 +85,7 @@ def generate_patterns():
             patterns[key] = pattern
 
     #merge months as regular name, abbreviation and number all together
-    patterns['day'] = u'(?P<day_of_the_month>' + patterns['days_of_the_month_as_numbers'] + u'|' + patterns['days_of_the_month_as_ordinal'] + ')(?!\d{2,4})'
+    patterns['day'] = u'(?P<day>' + patterns['days_of_the_month_as_numbers'] + u'|' + patterns['days_of_the_month_as_ordinal'] + ')(?!\d{2,4})'
 
     #merge months as regular name, abbreviation and number all together
     # makes sure that it doesn't pull out 3 as the month in January 23, 2015
@@ -72,28 +100,52 @@ def generate_patterns():
     # blank space, comma, dash, period, backslash
     # todo: write code for forward slash, an escape character
     patterns['punctuation'] = u"(?: |,|-|\.|\/){1,2}"
+    patterns['punctuation_nocomma'] = u"(?: |-|\.|\/){1,2}"
+    
+
+    patterns['dmy'] = u"(?P<dmy>" + patterns['day'].replace("day", "day_dmy") + patterns['punctuation'] + patterns['month'].replace("month","month_dmy") + patterns['punctuation'] + patterns['year'].replace("year", "year_dmy") + u")"
+
+    patterns['mdy'] = u"(?P<mdy>" + patterns['month'].replace("month", "month_mdy") + patterns['punctuation'] + patterns['day'].replace("day","day_mdy") + patterns['punctuation'] + patterns['year'].replace("mdy","year_mdy") + u")"
+
+    patterns['ymd'] = u"(?P<ymd>" + patterns['year'].replace("year","year_ymd") + patterns['punctuation'] + patterns['month'].replace("month","month_ymd") + patterns['punctuation'] + patterns['day'].replace("day","day_ymd") + u")"
+    
+    patterns['my'] = u"(?P<my>" + patterns['month'].replace("month","month_my") + patterns['punctuation_nocomma'] + patterns['year'].replace("year","year_my") + u")"
+
+    patterns['date'] = u"(?P<date>" + patterns['mdy'] + "|" + patterns['dmy'] + "|" + patterns['ymd'] + "|" + patterns['my'] + u")"
 
 global patterns
 generate_patterns()
 
-def get_date_from_match_group(match):
-    #print "starting get_date_from_match_group with ", match
-    #print dir(match)
-    #print match.group(0)
-    #print match.groupdict()
-    month = match.group("month")
+def date_from_dict(match):
+    month = match['month']
     if month.isdigit():
         month = int(month)
     else:
         month = month_to_number[month]
 
     try:
-        day = int(match.group("day_of_the_month"))
+        day = int(match.group("day"))
     except Exception as e:
         #print "exception is", e
         day = 1
 
     return datetime(int(match.group("year")), month, day, tzinfo=tzinfo)
+
+
+def is_date_in_list(date, list_of_dates):
+    return any((are_dates_same(date, d) for d in list_of_dates))
+
+def are_dates_same(a,b):
+    for level in ("year","month","day"):
+        if level in a and level in b and a[level] != b[level]:
+            return False
+    return True
+    
+
+def remove_duplicates(seq):
+    seen = set()
+    seen_add = seen.add
+    return [ x for x in seq if not (x in seen or seen_add(x))]
  
 def extract_dates(text):
     global patterns
@@ -104,24 +156,36 @@ def extract_dates(text):
     if isinstance(text, str):
         text = text.decode('utf-8')
 
-    dates = []
-
     matches = []
-    
-    # add day month year to matches
-    for match in re.finditer(re.compile(u"(?P<date>" + "(" + patterns['day'] + patterns['punctuation'] + ")?" + patterns['month'] + patterns['punctuation'] + patterns['year'] + u")", re.MULTILINE|re.IGNORECASE), text):
-        dates.append(get_date_from_match_group(match))
+    completes = []
+    partials = []
 
-    # add month day year to matches
-    for match in re.finditer(re.compile(u"(?P<date>" + patterns['month'] + patterns['punctuation'] + patterns['day'] + patterns['punctuation'] + patterns['year'] + u")", re.MULTILINE|re.IGNORECASE), text):
-        dates.append(get_date_from_match_group(match))
+    for match in re.finditer(re.compile(patterns['date'], re.MULTILINE|re.IGNORECASE), text):
+    #    print "match is", match.groupdict()
+        # this goes through the dictionary and removes empties and changes the keys back, e.g. from month_myd to month
+        match = dict((k.split("_")[0], num(v)) for k, v in match.groupdict().iteritems() if num(v))
 
-    # add year month day to matches
-    # to make sure don't match 23 May 2015 as May 2, 2023
-    for match in re.finditer(re.compile(u"(?P<date>" + patterns['year'] + patterns['punctuation'] + patterns['month'] + patterns['punctuation'] + patterns['day'] + u")", re.MULTILINE|re.IGNORECASE), text):
-        dates.append(get_date_from_match_group(match))
+        if all(k in match for k in ("day","month", "year")): 
+            completes.append(match)
+        else:
+            partials.append(match)
 
-    # sorts the dates by the number of times they appear in the text
-    dates = [date for date, freq in Counter(dates).most_common()]
+    #print "\ncompletes are", completes
 
-    return dates
+    # iterate through partials
+    # if a more specific date is given in the completes, drop the partial
+    # for example if Feb 1, 2014 is picked up and February 2014, too, drop February 2014
+
+    partials = [partial for partial in partials if not is_date_in_list(partial, completes)]
+    #print "\npartials are", partials
+  
+    #convert completes and partials and return list ordered by:
+    # complete/partial, most common, most recent
+    completes = [date(normalize_year(d['year']),d['month'],d['day']) for d in completes]
+    counter = Counter(completes)
+    completes = remove_duplicates(sorted(completes, key = lambda x: (counter[x], x.toordinal()), reverse=True))
+
+    #average_date = mean([d for d in completes])
+
+    return completes
+e=extract_dates
