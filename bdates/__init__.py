@@ -92,8 +92,10 @@ def get_date_from_match_group(match):
     except Exception as e:
         #print "exception is", e
         day = 1
-
-    return datetime(int(match.group("year")), month, day, tzinfo=tzinfo)
+    try:
+        return datetime(int(match.group("year")), month, day, tzinfo=tzinfo)
+    except Exception as e:
+        print e
  
 def extract_dates(text):
     global patterns
@@ -110,16 +112,24 @@ def extract_dates(text):
     
     # add day month year to matches
     for match in re.finditer(re.compile(u"(?P<date>" + "(" + patterns['day'] + patterns['punctuation'] + ")?" + patterns['month'] + patterns['punctuation'] + patterns['year'] + u")", re.MULTILINE|re.IGNORECASE), text):
-        dates.append(get_date_from_match_group(match))
+        date = get_date_from_match_group(match)
+        if date:
+            dates.append(date)
 
     # add month day year to matches
     for match in re.finditer(re.compile(u"(?P<date>" + patterns['month'] + patterns['punctuation'] + patterns['day'] + patterns['punctuation'] + patterns['year'] + u")", re.MULTILINE|re.IGNORECASE), text):
-        dates.append(get_date_from_match_group(match))
+        date = get_date_from_match_group(match)
+        if date:
+            dates.append(date)
+
 
     # add year month day to matches
     # to make sure don't match 23 May 2015 as May 2, 2023
     for match in re.finditer(re.compile(u"(?P<date>" + patterns['year'] + patterns['punctuation'] + patterns['month'] + patterns['punctuation'] + patterns['day'] + u")", re.MULTILINE|re.IGNORECASE), text):
-        dates.append(get_date_from_match_group(match))
+        date = get_date_from_match_group(match)
+        if date:
+            dates.append(date)
+
 
     # sorts the dates by the number of times they appear in the text
     dates = [date for date, freq in Counter(dates).most_common()]
