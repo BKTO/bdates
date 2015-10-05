@@ -85,7 +85,7 @@ def get_date_from_match_group(match):
     if month.isdigit():
         month = int(month)
     else:
-        month = month_to_number[month]
+        month = month_to_number[month.title()]
 
     try:
         day = int(match.group("day_of_the_month"))
