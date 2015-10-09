@@ -1,5 +1,6 @@
 from collections import Counter
 from dt import datetime
+from datetime import date
 import enumerations
 import pytz
 import re
@@ -184,7 +185,7 @@ def extract_dates(text, sorting=None):
   
     #convert completes and partials and return list ordered by:
     # complete/partial, most common, most recent
-    completes = [date(normalize_year(d['year']),d['month'],d['day']) for d in completes]
+    completes = [datetime(normalize_year(d['year']),d['month'],d['day']) for d in completes]
 
     if sorting:
         counter = Counter(completes)
@@ -207,7 +208,7 @@ def getFirstDateFromText(text):
     for match in re.finditer(re.compile(patterns['date'], re.MULTILINE|re.IGNORECASE), text):
         match = dict((k.split("_")[0], num(v)) for k, v in match.groupdict().iteritems() if num(v))
         if all(k in match for k in ("day","month", "year")):
-            return date(normalize_year(match['year']),match['month'],match['day'])
+            return datetime(normalize_year(match['year']),match['month'],match['day'])
 
 # the date of a webpage, like a blog or article, will often be the first date mentioned
 getPageDate = getFirstDateFromText
