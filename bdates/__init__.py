@@ -1,5 +1,5 @@
 from collections import Counter
-from datetime import date, datetime
+from dt import datetime
 import enumerations
 import pytz
 import re
@@ -121,7 +121,7 @@ def date_from_dict(match):
     if month.isdigit():
         month = int(month)
     else:
-        month = month_to_number[month]
+        month = month_to_number[month.title()]
 
     try:
         day = int(match.group("day"))
@@ -129,7 +129,10 @@ def date_from_dict(match):
         #print "exception is", e
         day = 1
 
-    return datetime(int(match.group("year")), month, day, tzinfo=tzinfo)
+    try:
+        return datetime(int(match.group("year")), month, day, tzinfo=tzinfo)
+    except Exception as e:
+        print e
 
 
 def is_date_in_list(date, list_of_dates):
@@ -200,8 +203,6 @@ def getFirstDateFromText(text):
     # and it handles text in foreign languages much better
     if isinstance(text, str):
         text = text.decode('utf-8')
-
-    dates = []
 
     for match in re.finditer(re.compile(patterns['date'], re.MULTILINE|re.IGNORECASE), text):
         match = dict((k.split("_")[0], num(v)) for k, v in match.groupdict().iteritems() if num(v))
