@@ -147,7 +147,7 @@ def remove_duplicates(seq):
     seen_add = seen.add
     return [ x for x in seq if not (x in seen or seen_add(x))]
  
-def extract_dates(text):
+def extract_dates(text, sorting=None):
     global patterns
 
     # convert to unicode if the text is in a bytestring
@@ -182,10 +182,31 @@ def extract_dates(text):
     #convert completes and partials and return list ordered by:
     # complete/partial, most common, most recent
     completes = [date(normalize_year(d['year']),d['month'],d['day']) for d in completes]
-    counter = Counter(completes)
-    completes = remove_duplicates(sorted(completes, key = lambda x: (counter[x], x.toordinal()), reverse=True))
+
+    if sorting:
+        counter = Counter(completes)
+        completes = remove_duplicates(sorted(completes, key = lambda x: (counter[x], x.toordinal()), reverse=True))
 
     #average_date = mean([d for d in completes])
 
     return completes
 e=extract_dates
+
+def getFirstDateFromText(text):
+    global patterns
+
+    # convert to unicode if the text is in a bytestring
+    # we conver to unicode because it is easier to work with
+    # and it handles text in foreign languages much better
+    if isinstance(text, str):
+        text = text.decode('utf-8')
+
+    dates = []
+
+    for match in re.finditer(re.compile(patterns['date'], re.MULTILINE|re.IGNORECASE), text):
+        match = dict((k.split("_")[0], num(v)) for k, v in match.groupdict().iteritems() if num(v))
+        if all(k in match for k in ("day","month", "year")):
+            return date(normalize_year(match['year']),match['month'],match['day'])
+
+# the date of a webpage, like a blog or article, will often be the first date mentioned
+getPageDate = getFirstDateFromText
