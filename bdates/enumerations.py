@@ -4,7 +4,7 @@ days_of_the_week_abbreviated = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
 
 # range generates a list of numbers from 1 to 31
 # map converts everthing in the list to unicode
-days_of_the_month_as_numbers = map(unicode, range(1,32))
+days_of_the_month_as_numbers = map(unicode, list(reversed(range(1,32))))
 
 # ordinal is a function that converts a number to its ordinal
 # for example it converts 22 to 22nd

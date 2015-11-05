@@ -90,7 +90,7 @@ def generate_patterns():
 
     #merge months as regular name, abbreviation and number all together
     # makes sure that it doesn't pull out 3 as the month in January 23, 2015
-    patterns['month'] = u'(?<!\d)(?P<month>' + patterns['months_verbose'] + u'|' + patterns['months_abbreviated'] + u'|' + patterns['months_as_numbers'] + u')'
+    patterns['month'] = u'(?<! \d)(?P<month>' + patterns['months_verbose'] + u'|' + patterns['months_abbreviated'] + u'|' + patterns['months_as_numbers'] + u')'
 
     # matches the year as two digits or four
     # tried to match the four digits first
@@ -100,7 +100,7 @@ def generate_patterns():
     # spaces or punctuation separatings days, months and years
     # blank space, comma, dash, period, backslash
     # todo: write code for forward slash, an escape character
-    patterns['punctuation'] = u"(?: |,|-|\.|\/){1,2}"
+    patterns['punctuation'] = u"(?: |,|-|\.|\/|){1,2}"
     patterns['punctuation_nocomma'] = u"(?: |-|\.|\/){1,2}"
     
 
@@ -208,7 +208,7 @@ def getFirstDateFromText(text):
     for match in re.finditer(re.compile(patterns['date'], re.MULTILINE|re.IGNORECASE), text):
         match = dict((k.split("_")[0], num(v)) for k, v in match.groupdict().iteritems() if num(v))
         if all(k in match for k in ("day","month", "year")):
-            return datetime(normalize_year(match['year']),match['month'],match['day'])
+            return datetime(normalize_year(match['year']),match['month'],match['day'], tzinfo=tzinfo)
 
 # the date of a webpage, like a blog or article, will often be the first date mentioned
-getPageDate = getFirstDateFromText
+g = getPageDate = getFirstDateFromText
