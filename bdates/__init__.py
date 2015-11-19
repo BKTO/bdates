@@ -5,38 +5,14 @@ import enumerations
 import pytz
 import re
 
+flags = re.IGNORECASE|re.MULTILINE|re.UNICODE
+
 # the tzinfo (a.k.a. timezone) defaults to UTC
 # you can override this by setting bdates.timezone to what you wish
 global tzinfo
 tzinfo = pytz.UTC
 
-month_to_number = {
-                 "Jan": 1,
-                 "January": 1,
-                 "Feb": 2,
-                 "Febuary": 2,
-                 "February": 2,
-                 "Mar": 3,
-                 "March": 3,
-                 "Apr": 4,
-                 "April": 4,
-                 "May": 5,
-                 "Jun": 6,
-                 "June": 6,
-                 "Jul": 7,
-                 "July": 7,
-                 "Aug": 8,
-                 "August": 8,
-                 "Sep": 9,
-                 "Sept": 9,
-                 "September": 9,
-                 "Oct": 10,
-                 "October": 10,
-                 "Nov": 11,
-                 "November": 11,
-                 "Dec": 12,
-                 "December": 12
-}
+month_to_number = enumerations.month_to_number
 
 #num converts text to a number
 def num(text):
@@ -75,7 +51,7 @@ def generate_patterns():
 
         # ignore inherited methods that come with most python modules
         # also ignore short variables of 1 length
-        if not key.startswith("__") and len(key) > 1:
+        if not key.startswith("__") and len(key) > 1 and isinstance(getattr(enumerations, key), list):
             pattern = "(?:" + "|".join(getattr(enumerations, key)) + ")"
 
             # check to see if pattern is in unicode
@@ -95,7 +71,8 @@ def generate_patterns():
     # matches the year as two digits or four
     # tried to match the four digits first
     # (?!, \d{2,4}) makes sure it doesn't pick out 23 as the year in January 23, 2015
-    patterns['year'] = u'(?P<year>\d{4}|\d{2})(?!, \d{2,4})'
+    #patterns['year'] = u'(?P<year>\d{4}|\d{2})(?!, \d{2,4})(?!\d{2})'
+    patterns['year'] = u"(?P<year>" + patterns['years'] + u")"
 
     # spaces or punctuation separatings days, months and years
     # blank space, comma, dash, period, backslash
@@ -104,11 +81,11 @@ def generate_patterns():
     patterns['punctuation_nocomma'] = u"(?: |-|\.|\/){1,2}"
     
 
-    patterns['dmy'] = u"(?P<dmy>" + patterns['day'].replace("day", "day_dmy") + patterns['punctuation'] + patterns['month'].replace("month","month_dmy") + patterns['punctuation'] + patterns['year'].replace("year", "year_dmy") + u")"
+    patterns['dmy'] = u"(?P<dmy>" + patterns['day'].replace("day", "day_dmy") + patterns['punctuation'] + patterns['month'].replace("month","month_dmy") + patterns['punctuation'] + patterns['year'].replace("year", "year_dmy") + u")" + u"(?!-\d{1,2})"
 
-    patterns['mdy'] = u"(?P<mdy>" + patterns['month'].replace("month", "month_mdy") + patterns['punctuation'] + patterns['day'].replace("day","day_mdy") + patterns['punctuation'] + patterns['year'].replace("mdy","year_mdy") + u")"
+    patterns['mdy'] = u"(?P<mdy>" + patterns['month'].replace("month", "month_mdy") + patterns['punctuation'] + patterns['day'].replace("day","day_mdy") + patterns['punctuation'] + patterns['year'].replace("mdy","year_mdy") + u")" + u"(?!-\d{1,2})"
 
-    patterns['ymd'] = u"(?P<ymd>" + patterns['year'].replace("year","year_ymd") + patterns['punctuation'] + patterns['month'].replace("month","month_ymd") + patterns['punctuation'] + patterns['day'].replace("day","day_ymd") + u")"
+    patterns['ymd'] = u"(?<!\d)" + u"(?P<ymd>" + patterns['year'].replace("year","year_ymd") + patterns['punctuation'] + patterns['month'].replace("month","month_ymd") + patterns['punctuation'] + patterns['day'].replace("day","day_ymd") + u")" + u"(?!-\d{1,2}-\d{1,2})"
     
     patterns['my'] = u"(?P<my>" + patterns['month'].replace("month","month_my") + patterns['punctuation_nocomma'] + patterns['year'].replace("year","year_my") + u")"
 
@@ -164,7 +141,7 @@ def extract_dates(text, sorting=None):
     completes = []
     partials = []
 
-    for match in re.finditer(re.compile(patterns['date'], re.MULTILINE|re.IGNORECASE), text):
+    for match in re.finditer(re.compile(patterns['date'], flags), text):
     #    print "match is", match.groupdict()
         # this goes through the dictionary and removes empties and changes the keys back, e.g. from month_myd to month
         match = dict((k.split("_")[0], num(v)) for k, v in match.groupdict().iteritems() if num(v))
@@ -205,7 +182,7 @@ def getFirstDateFromText(text):
     if isinstance(text, str):
         text = text.decode('utf-8')
 
-    for match in re.finditer(re.compile(patterns['date'], re.MULTILINE|re.IGNORECASE), text):
+    for match in re.finditer(re.compile(patterns['date'], flags), text):
         match = dict((k.split("_")[0], num(v)) for k, v in match.groupdict().iteritems() if num(v))
         if all(k in match for k in ("day","month", "year")):
             return datetime(normalize_year(match['year']),match['month'],match['day'], tzinfo=tzinfo)
