@@ -1,3 +1,4 @@
+from arabic import toArabic as a
 from os.path import abspath, dirname
 from datetime import date
 
@@ -9,7 +10,7 @@ days_of_the_week_abbreviated = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
 
 # range generates a list of numbers from 1 to 31
 # map converts everthing in the list to unicode
-days_of_the_month_as_numbers = map(unicode, list(reversed(range(1,32)))) + map(lambda n : u"0"+unicode(n),range(0, 10))
+days_of_the_month_as_numbers = map(unicode, list(reversed(range(1,32)))) + map(lambda n : u"0"+unicode(n),range(0, 10)) + map(a, list(reversed(range(1,32))))
 
 # ordinal is a function that converts a number to its ordinal
 # for example it converts 22 to 22nd
@@ -29,7 +30,7 @@ months_abbreviated = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct
 
 # range generates a list of numbers from 1 to 12
 # map converts everthing in the list to unicode
-months_as_numbers = map(unicode,range(1,13)) + map(lambda n : u"0"+unicode(n),range(0, 10))
+months_as_numbers = map(unicode,range(1,13)) + map(lambda n : u"0"+unicode(n),range(0, 10)) + map(a,range(1,13))
 
 month_to_number = {
         "Jan": 1,
@@ -59,6 +60,13 @@ month_to_number = {
         "December": 12
         }
 
+for language in ["arabic"]:
+    with open(dirpath + "/data/months_verbose/" + language + ".txt") as f:
+        for line in f.read().decode("utf-8").split("\n"):
+            if line and not line.startswith("#"):
+                split = line.strip().split(">")
+                month_to_number[split[0].strip()] = split[1].strip()
+
 current_year = date.today().year
 curent_year_abbreviated = int(str(current_year)[-2:])
-years = map(unicode,range(1990, current_year+1)) + [u"15",u"16"]
+years = map(unicode,range(1990, current_year+1)) + [u"15",u"16"] + map(a,range(1990, current_year+1))

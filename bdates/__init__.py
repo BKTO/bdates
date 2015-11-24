@@ -23,14 +23,15 @@ def num(text):
             text_title = text.title()
             if text_title in month_to_number:
                 return month_to_number[text_title] 
-            else:
-                return None
 
 # normalizes year to four digits
 # e.g., 90s to 1990 and 11 to 2011
 def normalize_year(y):
     current_year = date.today().year
-    y_str = str(y).rstrip('s').rstrip("'")
+
+    # we run int(y) to convert to number just in case arabic
+    y_str = str(int(y)).rstrip('s').rstrip("'")
+
     if len(y_str) == 2:
         y_int = int(y_str)
         if y_int > int(str(current_year+1)[2:]):
@@ -66,27 +67,32 @@ def generate_patterns():
 
     #merge months as regular name, abbreviation and number all together
     # makes sure that it doesn't pull out 3 as the month in January 23, 2015
-    patterns['month'] = u'(?<! \d)(?P<month>' + patterns['months_verbose'] + u'|' + patterns['months_abbreviated'] + u'|' + patterns['months_as_numbers'] + u')'
+    #patterns['month'] = u'(?<! \d)(?P<month>' + patterns['months_verbose'] + u'|' + patterns['months_abbreviated'] + u'|' + patterns['months_as_numbers'] + u"(?:\/" + patterns['months_verbose'] + u")?" + u')'
+    patterns['month'] = u'(?<! \d)(?P<month>' + patterns['months_verbose'] + u'|' + patterns['months_abbreviated'] + u'|' + patterns['months_as_numbers'] + u')' + u"(?:" + "/" + patterns['months_verbose'] + u")?"
 
     # matches the year as two digits or four
     # tried to match the four digits first
     # (?!, \d{2,4}) makes sure it doesn't pick out 23 as the year in January 23, 2015
-    #patterns['year'] = u'(?P<year>\d{4}|\d{2})(?!, \d{2,4})(?!\d{2})'
     patterns['year'] = u"(?P<year>" + patterns['years'] + u")"
 
     # spaces or punctuation separatings days, months and years
     # blank space, comma, dash, period, backslash
     # todo: write code for forward slash, an escape character
-    patterns['punctuation'] = u"(?: |,|-|\.|\/|){1,2}"
-    patterns['punctuation_nocomma'] = u"(?: |-|\.|\/){1,2}"
+    #patterns['punctuation'] = u"(?P<punctuation>, |:| |,|-|\.|\/|)"
+    patterns['punctuation'] = u"(?:, |:| |,|-|\.|\/|)"
+    patterns['punctuation_nocomma'] = u"(?: |-|\.|\/)"
+    #patterns['punctuation_second'] = u"\g<punctuation>"
+    patterns['punctuation_second'] = patterns['punctuation']
     
 
-    patterns['dmy'] = u"(?P<dmy>" + patterns['day'].replace("day", "day_dmy") + patterns['punctuation'] + patterns['month'].replace("month","month_dmy") + patterns['punctuation'] + patterns['year'].replace("year", "year_dmy") + u")" + u"(?!-\d{1,2})"
+    patterns['dmy'] = u"(?P<dmy>" + patterns['day'].replace("day", "day_dmy") + patterns['punctuation'].replace("punctuation","punctuation_dmy") + patterns['month'].replace("month","month_dmy") + patterns['punctuation_second'].replace("punctuation","punctuation_dmy") + patterns['year'].replace("year", "year_dmy") + u")" + u"(?!-\d{1,2})"
+    print "patterns_dmy is"
+    print patterns['dmy']
+ 
+    patterns['mdy'] = u"(?P<mdy>" + patterns['month'].replace("month", "month_mdy") + patterns['punctuation'].replace("punctuation","punctuation_mdy") + patterns['day'].replace("day","day_mdy") + "(?:" + patterns['punctuation_second'].replace("punctuation","punctuation_mdy") + "|, )" + patterns['year'].replace("mdy","year_mdy") + u")" + u"(?!-\d{1,2})"
 
-    patterns['mdy'] = u"(?P<mdy>" + patterns['month'].replace("month", "month_mdy") + patterns['punctuation'] + patterns['day'].replace("day","day_mdy") + patterns['punctuation'] + patterns['year'].replace("mdy","year_mdy") + u")" + u"(?!-\d{1,2})"
-
-    patterns['ymd'] = u"(?<!\d)" + u"(?P<ymd>" + patterns['year'].replace("year","year_ymd") + patterns['punctuation'] + patterns['month'].replace("month","month_ymd") + patterns['punctuation'] + patterns['day'].replace("day","day_ymd") + u")" + u"(?!-\d{1,2}-\d{1,2})"
-    
+    patterns['ymd'] = u"(?<![\dA-Za-z])" + u"(?P<ymd>" + patterns['year'].replace("year","year_ymd") + patterns['punctuation'].replace("punctuation","punctuation_ymd") + patterns['month'].replace("month","month_ymd") + patterns['punctuation_second'].replace("punctuation","punctuation_ymd") + patterns['day'].replace("day","day_ymd") + u")" + u"(?!-\d{1,2}-\d{1,2})(?![\dA-Za-z])"
+   
     patterns['my'] = u"(?P<my>" + patterns['month'].replace("month","month_my") + patterns['punctuation_nocomma'] + patterns['year'].replace("year","year_my") + u")"
 
     patterns['date'] = u"(?P<date>" + patterns['mdy'] + "|" + patterns['dmy'] + "|" + patterns['ymd'] + "|" + patterns['my'] + u")"
@@ -160,9 +166,15 @@ def extract_dates(text, sorting=None):
     partials = [partial for partial in partials if not is_date_in_list(partial, completes)]
     #print "\npartials are", partials
   
-    #convert completes and partials and return list ordered by:
+    # convert completes and partials and return list ordered by:
     # complete/partial, most common, most recent
-    completes = [datetime(normalize_year(d['year']),d['month'],d['day']) for d in completes]
+    for d in completes:
+      try:
+        print datetime(normalize_year(d['year']),int(d['month']),int(d['day']))  
+      except Exception as e:
+        print d['year'], d['month'], d['day']
+    completes = [datetime(normalize_year(d['year']),int(d['month']),int(d['day'])) for d in completes]
+
 
     if sorting:
         counter = Counter(completes)
@@ -174,6 +186,7 @@ def extract_dates(text, sorting=None):
 e=extract_dates
 
 def getFirstDateFromText(text):
+    print "starting getFirstDateFromText"
     global patterns
 
     # convert to unicode if the text is in a bytestring
@@ -183,9 +196,20 @@ def getFirstDateFromText(text):
         text = text.decode('utf-8')
 
     for match in re.finditer(re.compile(patterns['date'], flags), text):
-        match = dict((k.split("_")[0], num(v)) for k, v in match.groupdict().iteritems() if num(v))
-        if all(k in match for k in ("day","month", "year")):
-            return datetime(normalize_year(match['year']),match['month'],match['day'], tzinfo=tzinfo)
+        print "\nmatch is", match.group(0)
+        if not isDefinitelyNotDate(match.group(0)):
+            match = dict((k.split("_")[0], num(v)) for k, v in match.groupdict().iteritems() if num(v))
+            print "match is", match
+            if all(k in match for k in ("day","month", "year")):
+                print "returning getFirstDateFromText"
+                return datetime(normalize_year(match['year']),int(match['month']),int(match['day']), tzinfo=tzinfo)
+    print "finishing getFirstDateFromText"
 
 # the date of a webpage, like a blog or article, will often be the first date mentioned
 g = getPageDate = getFirstDateFromText
+
+
+def isDefinitelyNotDate(text):
+    if re.match("\d{1,2}-\d{1,2}.\d{1,2}",text, flags=flags):
+        return True 
+    return False

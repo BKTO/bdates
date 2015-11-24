@@ -4,6 +4,7 @@
 # Levant and Mesopotamia
 Kānūn ath-Thānī > 1
 كانون الثاني > 1
+كانون ثاني > 1
 Shubāṭ > 2
 شباط > 2
 Ādhār > 3
@@ -25,6 +26,7 @@ Tishrīn al-Awwal > 10
 تشرين الأول > 10
 Tishrīn ath-Thānī > 11
 تشرين الثاني > 11
+تشرين ثاني > 11
 Kānūn al-Awwal > 12
 كانون الأول > 12
 
